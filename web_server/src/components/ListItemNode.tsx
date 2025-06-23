@@ -29,17 +29,6 @@ export function ListItemNode({
   const [expanded, setExpanded] = useState(true); // expanded by default
   const updateListItem = useListStore((s: ListStoreState) => s.updateListItem);
 
-  const copyItemInfo = async () => {
-    const itemInfo = `Take item #${item.id} ("${item.text}") from list ${listId} and create specific sub-tasks for it. Each sub-task should be a concrete, actionable step. Do not modify the original item unless the user asks you to.`;
-
-    try {
-      await navigator.clipboard.writeText(itemInfo);
-      console.log("Copied to clipboard:", itemInfo);
-    } catch (err) {
-      console.error("Failed to copy to clipboard:", err);
-    }
-  };
-
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
@@ -89,7 +78,6 @@ export function ListItemNode({
           deleting={deleting}
           expanded={expanded}
           hasChildren={hasChildren}
-          onCopy={copyItemInfo}
           onDelete={handleDelete}
           onToggleExpanded={(e) => {
             e.stopPropagation();

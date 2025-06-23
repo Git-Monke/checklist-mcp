@@ -1,0 +1,19 @@
+{
+  "name": "db-server",
+  "version": "1.0.0",
+  "description": "A server for the checklist database",
+  "main": "db_server.js",
+  "scripts": {
+    "start": "node db_server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/express": "^5.0.3",
+    "tsc": "^2.0.4"
+  }
+}

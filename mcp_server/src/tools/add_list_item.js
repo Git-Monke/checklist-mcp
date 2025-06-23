@@ -22,7 +22,6 @@ export function createAddListItemTool(dbRequest) {
         text: z.string().describe("The text content of the new item"),
         parent_id: z
           .number()
-          .nullable()
           .optional()
           .describe("Optional ID of parent item (for nested items)"),
         checked: z
@@ -31,15 +30,18 @@ export function createAddListItemTool(dbRequest) {
           .describe("Whether the item should be marked as completed"),
       },
     },
-    handler: async ({ list_id, text, parent_id = null, checked = false }) => {
+    handler: async ({ list_id, text, parent_id, checked = false }) => {
       try {
+        // Convert undefined to null for the API
+        const actualParentId = parent_id !== undefined ? parent_id : null;
+
         const newItem = await dbRequest(`/lists/${list_id}/items`, {
           method: "POST",
-          body: JSON.stringify({ text, parent_id, checked }),
+          body: JSON.stringify({ text, parent_id: actualParentId, checked }),
         });
 
-        const parentText = parent_id
-          ? ` as a sub-item of item ${parent_id}`
+        const parentText = actualParentId
+          ? ` as a sub-item of item ${actualParentId}`
           : "";
         const statusText = checked ? " (marked as completed)" : "";
 

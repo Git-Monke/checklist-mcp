@@ -1,0 +1,21 @@
+{
+  "name": "checklist-mcp-server",
+  "version": "1.0.0",
+  "description": "Model Context Protocol server for LLMs to interact with checklist data",
+  "type": "module",
+  "main": "mcp_server.js",
+  "bin": {
+    "checklist-mcp-server": "mcp_server.js"
+  },
+  "scripts": {
+    "start": "node mcp_server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.13.1",
+    "node-fetch": "^3.3.2",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22"
+  }
+}

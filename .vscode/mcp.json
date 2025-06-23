@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "checklist": {
+      "command": "node",
+      "args": ["mcp_server/mcp_server.js"],
+      "env": {
+        "DB_SERVER_URL": "http://localhost:1029"
+      }
+    }
+  }
+}

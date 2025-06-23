@@ -14,13 +14,15 @@ function AppContent() {
   );
 
   return (
-    <div>
-      <header className="flex items-center justify-between gap-4">
+    <div className="flex flex-col gap-8">
+      <header className="flex items-center gap-8">
         <SidebarTrigger />
         <h1 className="text-xl font-bold">List Manager</h1>
       </header>
-      <main>
-        <h1 className="text-2xl font-bold">{selectedList?.name}</h1>
+      <main className="flex flex-col gap-4">
+        <h1 className="text-2xl font-bold text-left ml-1.5">
+          {selectedList?.name}
+        </h1>
         {error && (
           <div className="my-4 rounded bg-red-100 px-4 py-2 text-sm text-red-800 dark:bg-red-900 dark:text-red-200">
             {error}

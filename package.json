@@ -1,0 +1,19 @@
+{
+  "name": "checklist-mcp",
+  "version": "1.0.0",
+  "description": "A checklist application with Model Context Protocol integration",
+  "type": "module",
+  "scripts": {
+    "start": "node start-all.js",
+    "dev": "node start-all.js"
+  },
+  "keywords": [
+    "checklist",
+    "mcp",
+    "model-context-protocol",
+    "react",
+    "sqlite"
+  ],
+  "author": "",
+  "license": "MIT"
+}

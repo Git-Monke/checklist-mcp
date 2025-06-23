@@ -57,11 +57,24 @@ wss.on("connection", (ws, req) => {
   });
 });
 
-function broadcastUpdate() {
+// Broadcast to all clients that lists have changed (general update)
+function broadcastListsUpdate() {
   console.log(`[WS] Broadcasting lists_updated to ${wss.clients.size} clients`);
   wss.clients.forEach((client) => {
     if (client.readyState === 1) {
       client.send("lists_updated");
+    }
+  });
+}
+
+// Broadcast to all clients that a specific list has changed
+function broadcastListUpdate(listId) {
+  console.log(
+    `[WS] Broadcasting list_updated:${listId} to ${wss.clients.size} clients`
+  );
+  wss.clients.forEach((client) => {
+    if (client.readyState === 1) {
+      client.send(`list_updated:${listId}`);
     }
   });
 }
@@ -93,7 +106,7 @@ app.post("/lists", (req, res) => {
       .get(info.lastInsertRowid);
     console.log(`[DB] Created list '${name}' (id=${list.id})`);
     res.status(201).json(list);
-    broadcastUpdate();
+    broadcastListsUpdate();
   } catch (err) {
     console.error("[DB] Failed to create list", err);
     res.status(500).json({ error: "Failed to create list" });
@@ -141,7 +154,7 @@ app.put("/lists/:id", (req, res) => {
     const list = db.prepare("SELECT * FROM lists WHERE id = ?").get(id);
     console.log(`[DB] Updated list id=${id} name='${name}'`);
     res.json(list);
-    broadcastUpdate();
+    broadcastListsUpdate();
   } catch (err) {
     console.error(`[DB] Failed to update list id=${id}`, err);
     res.status(500).json({ error: "Failed to update list" });
@@ -160,7 +173,7 @@ app.delete("/lists/:id", (req, res) => {
     }
     console.log(`[DB] Deleted list id=${id}`);
     res.json({ success: true });
-    broadcastUpdate();
+    broadcastListsUpdate();
   } catch (err) {
     console.error(`[DB] Failed to delete list id=${id}`, err);
     res.status(500).json({ error: "Failed to delete list" });
@@ -201,7 +214,7 @@ app.post("/lists/:id/items", (req, res) => {
       .get(info.lastInsertRowid);
     console.log(`[DB] Created item id=${item.id} in list id=${id}`);
     res.status(201).json(item);
-    broadcastUpdate();
+    broadcastListUpdate(id);
   } catch (err) {
     console.error(`[DB] Failed to create item in list id=${id}`, err);
     res.status(500).json({ error: "Failed to create list item" });
@@ -269,7 +282,7 @@ app.put("/lists/:id/items/:itemId", (req, res) => {
       .get(itemId, id);
     console.log(`[DB] Updated item id=${itemId} in list id=${id}`);
     res.json(item);
-    broadcastUpdate();
+    broadcastListUpdate(id);
   } catch (err) {
     console.error(
       `[DB] Failed to update item id=${itemId} in list id=${id}`,
@@ -293,7 +306,7 @@ app.delete("/lists/:id/items/:itemId", (req, res) => {
     }
     console.log(`[DB] Deleted item id=${itemId} from list id=${id}`);
     res.json({ success: true });
-    broadcastUpdate();
+    broadcastListUpdate(id);
   } catch (err) {
     console.error(
       `[DB] Failed to delete item id=${itemId} from list id=${id}`,

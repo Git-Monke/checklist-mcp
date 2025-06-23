@@ -1,16 +1,9 @@
-import React, { useState } from "react";
+import React from "react";
 import { useListStore } from "../store/useListStore";
-import type {
-  List,
-  BuiltListItem,
-  ListStoreState,
-} from "../store/useListStore";
-import { Input } from "./ui/input";
-
-// Extend BuiltListItem for creation to allow parent_id
-interface BuiltListItemWithParent extends BuiltListItem {
-  parent_id?: number | null;
-}
+import type { BuiltListItem, ListStoreState } from "../store/useListStore";
+import { motion, AnimatePresence } from "framer-motion";
+import { ListItemNode } from "./ListItemNode";
+import { AddItemInput } from "./AddItemInput";
 
 function ListItemsTree() {
   const selectedList = useListStore((s: ListStoreState) =>
@@ -20,148 +13,88 @@ function ListItemsTree() {
   if (!selectedList) return null;
 
   return (
-    <div>
+    <div className="flex flex-col gap-4 justify-start">
       <ListItemNodes items={selectedList.items} listId={selectedList.id} />
-      <AddItemInput listId={selectedList.id} parentId={null} />
+      <AddItemInput listId={selectedList.id} parentId={null} showing={true} />
     </div>
   );
+}
+
+// Helper to find an item by id in a tree
+function findItemById(
+  items: BuiltListItem[],
+  id: number
+): BuiltListItem | undefined {
+  for (const item of items) {
+    if (item.id === id) return item;
+    if (item.children) {
+      const found = findItemById(item.children, id);
+      if (found) return found;
+    }
+  }
+  return undefined;
 }
 
 function ListItemNodes({
   items,
   listId,
   parentId,
+  isShowing = true,
 }: {
   items: BuiltListItem[];
   listId: number;
   parentId?: number | null;
+  isShowing?: boolean;
 }) {
-  const createListItem = useListStore((s: ListStoreState) => s.createListItem);
-  const updateListItem = useListStore((s: ListStoreState) => s.updateListItem);
   const deleteListItem = useListStore((s: ListStoreState) => s.deleteListItem);
 
-  if (!items || items.length === 0) return null;
   return (
-    <ul>
-      {items.map((item) => (
-        <li key={item.id}>
-          <InlineEditText
-            value={item.text}
-            onSave={async (text) => {
-              if (text !== item.text) {
-                await updateListItem(listId, item.id, { text });
-              }
-            }}
-          />
-          {item.children && item.children.length > 0 && (
-            <ListItemNodes
-              items={item.children}
-              listId={listId}
-              parentId={item.id}
-            />
-          )}
-          <AddItemInput listId={listId} parentId={item.id} />
-          <button
-            className="ml-2 text-xs text-red-500 hover:underline"
-            onClick={() => deleteListItem(listId, item.id)}
-            title="Delete item"
-          >
-            Delete
-          </button>
-        </li>
-      ))}
-    </ul>
+    <AnimatePresence initial={false}>
+      {isShowing && (
+        <div>
+          <ul className="pl-8">
+            <AnimatePresence initial={false}>
+              {items.map((item) => (
+                <AnimtedListItemNode key={parentId + "_" + item.id}>
+                  <ListItemNode
+                    listId={listId}
+                    item={item}
+                    deleteListItem={deleteListItem}
+                    ListItemNodes={ListItemNodes}
+                  />
+                </AnimtedListItemNode>
+              ))}
+            </AnimatePresence>
+          </ul>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }
 
-function InlineEditText({
-  value,
-  onSave,
-}: {
-  value: string;
-  onSave: (v: string) => void | Promise<void>;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [text, setText] = useState(value);
-
-  const handleBlurOrEnter = async () => {
-    setEditing(false);
-    if (text.trim() && text !== value) {
-      await onSave(text.trim());
-    }
-  };
-
-  return editing ? (
-    <Input
-      className="inline-block w-auto text-sm"
-      value={text}
-      autoFocus
-      onChange={(e) => setText(e.target.value)}
-      onBlur={handleBlurOrEnter}
-      onKeyDown={async (e) => {
-        if (e.key === "Enter") {
-          await handleBlurOrEnter();
-        }
+function AnimtedListItemNode({ children }: { children: React.ReactNode }) {
+  return (
+    <motion.li
+      className="relative"
+      initial={{ height: 0, opacity: 0 }}
+      animate={{
+        height: "auto",
+        opacity: 1,
+        transition: {
+          type: "spring",
+          bounce: 0.3,
+          opacity: { delay: 0.1 },
+        },
       }}
-    />
-  ) : (
-    <span
-      className="cursor-pointer text-sm hover:underline"
-      onClick={() => setEditing(true)}
+      exit={{ opacity: 0, height: 0 }}
+      transition={{
+        type: "spring",
+        bounce: 0,
+        opacity: { duration: 0.1 },
+      }}
     >
-      {value}
-    </span>
-  );
-}
-
-function AddItemInput({
-  listId,
-  parentId,
-}: {
-  listId: number;
-  parentId: number | null;
-}) {
-  const createListItem = useListStore((s: ListStoreState) => s.createListItem);
-  const [adding, setAdding] = useState(false);
-  const [text, setText] = useState("");
-
-  const handleAdd = async () => {
-    if (text.trim()) {
-      await createListItem(listId, {
-        text: text.trim(),
-        parent_id: parentId,
-      } as Partial<BuiltListItemWithParent>);
-      setText("");
-      setAdding(false);
-    }
-  };
-
-  if (!adding) {
-    return (
-      <button
-        className="ml-2 text-xs text-blue-500 hover:underline"
-        onClick={() => setAdding(true)}
-        type="button"
-      >
-        + Add Item
-      </button>
-    );
-  }
-
-  return (
-    <Input
-      className="ml-2 inline-block w-auto text-xs"
-      value={text}
-      autoFocus
-      onChange={(e) => setText(e.target.value)}
-      onBlur={handleAdd}
-      onKeyDown={async (e) => {
-        if (e.key === "Enter") {
-          await handleAdd();
-        }
-      }}
-      placeholder="New item"
-    />
+      {children}
+    </motion.li>
   );
 }
 

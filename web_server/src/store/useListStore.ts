@@ -2,16 +2,17 @@
 // npm install zustand
 // npm install --save-dev @types/zustand
 
-import { create, StateCreator } from 'zustand';
-
-// Set the backend port here for easy configuration
-const PORT = 1029;
+import { create } from 'zustand';
+import type { StateCreator } from 'zustand';
+import { createWebSocketConnection } from '../utils/websocket';
+import { api, ApiError } from '../services/api';
 
 // Types
 export interface BuiltListItem {
   id: number;
   text: string;
   checked: boolean;
+  parent_id?: number | null;
   children: BuiltListItem[];
 }
 
@@ -28,7 +29,7 @@ interface ListStoreState {
   loading: boolean;
   error: string | null;
   selectedListId: number | null;
-  selectList: (id: number) => void;
+  selectList: (id: number | null) => void;
   fetchLists: () => Promise<void>;
   createList: (name: string) => Promise<void>;
   updateList: (id: number, data: Partial<Omit<List, 'id' | 'items'>>) => Promise<void>;
@@ -36,148 +37,189 @@ interface ListStoreState {
   createListItem: (listId: number, data: Partial<BuiltListItem>) => Promise<void>;
   updateListItem: (listId: number, itemId: number, data: Partial<BuiltListItem>) => Promise<void>;
   deleteListItem: (listId: number, itemId: number) => Promise<void>;
-  startAutoRefresh: (intervalMs?: number) => void;
-  stopAutoRefresh: () => void;
   fetchListById: (id: number) => Promise<void>;
 }
 
 export const useListStore = create<ListStoreState>(((set, get) => {
+  // Initialize WebSocket connection using the utility
+  const wsConnection = createWebSocketConnection({
+    url: `ws://localhost:1029`,
+    onMessage: (event) => {
+      const msg = event.data;
+
+      if (msg === 'lists_updated') {
+        get().fetchLists();
+      } else if (msg.startsWith('list_updated:')) {
+        const id = parseInt(msg.split(':')[1], 10);
+
+        if (!isNaN(id)) {
+          get().fetchListById(id);
+        }
+      }
+    },
+    onOpen: () => {
+      set({ error: null }); // Clear error on successful connect
+    },
+    onError: () => {
+      set({ error: 'WebSocket error: connection lost' });
+    },
+    onClose: () => {
+      set({ error: 'WebSocket closed. Attempting to reconnect...' });
+    }
+  });
+
   // Scaffolded actions
   const fetchLists = async () => {
     set({ loading: true, error: null });
-
     try {
-      const res = await fetch(`http://localhost:${PORT}/lists`);
+      const lists = await api.lists.getAll();
+      const currentLists = get().lists;
 
-      if (!res.ok) throw new Error(`Failed to fetch lists: ${res.status}`);
+      // Merge new metadata with existing items (if any)
+      const mergedLists = lists.map((newList) => {
+        const existing = currentLists.find((l) => l.id === newList.id);
+        return existing && existing.items
+          ? { ...newList, items: existing.items }
+          : { ...newList, items: [] };
+      });
 
-      const lists = await res.json();
-      set({ lists, loading: false, error: null });
+      // Check if the currently selected list still exists
+      const currentState = get();
+      const selectedListStillExists = currentState.selectedListId && 
+        mergedLists.some((list) => list.id === currentState.selectedListId);
+
+      set({
+        lists: mergedLists,
+        loading: false,
+        error: null,
+        selectedListId: selectedListStillExists ? currentState.selectedListId : null
+      });
     } catch (err: any) {
-      set({ error: err.message || "Unknown error", loading: false });
+      const errorMessage = err instanceof ApiError 
+        ? `Failed to fetch lists: ${err.status}` 
+        : err.message || "Unknown error";
+      set({ error: errorMessage, loading: false });
     }
   };
 
   const createList = async (name: string) => {
     set({ loading: true, error: null });
-
     try {
-      const res = await fetch(`http://localhost:${PORT}/lists`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
-
-      if (!res.ok) throw new Error(`Failed to create list: ${res.status}`);
-      await fetchLists();
+      await api.lists.create(name);
+      set({ loading: false });
+      // WebSocket will handle the lists update
     } catch (err: any) {
-      set({ error: err.message || "Unknown error", loading: false });
+      const errorMessage = err instanceof ApiError 
+        ? `Failed to create list: ${err.status}` 
+        : err.message || "Unknown error";
+      set({ error: errorMessage, loading: false });
     }
   };
 
   const updateList = async (id: number, data: Partial<Omit<List, 'id' | 'items'>>) => {
     set({ loading: true, error: null });
-
     try {
-      const res = await fetch(`http://localhost:${PORT}/lists/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      if (!res.ok) throw new Error(`Failed to update list: ${res.status}`);
-
-      await fetchLists();
+      await api.lists.update(id, data as { name: string });
+      set({ loading: false });
+      // WebSocket will handle the lists update
     } catch (err: any) {
-      set({ error: err.message || "Unknown error", loading: false });
+      const errorMessage = err instanceof ApiError 
+        ? `Failed to update list: ${err.status}` 
+        : err.message || "Unknown error";
+      set({ error: errorMessage, loading: false });
     }
   };
 
   const deleteList = async (id: number) => {
     set({ loading: true, error: null });
-
     try {
-      const res = await fetch(`http://localhost:${PORT}/lists/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) throw new Error(`Failed to delete list: ${res.status}`);
-
-      await fetchLists();
+      await api.lists.delete(id);
+      
+      // Just clear loading state - WebSocket will handle the update and selection logic
+      set({ loading: false });
+      
+      // WebSocket will handle the lists update and smart selection via fetchLists
     } catch (err: any) {
-      set({ error: err.message || "Unknown error", loading: false });
+      const errorMessage = err instanceof ApiError 
+        ? `Failed to delete list: ${err.status}` 
+        : err.message || "Unknown error";
+      set({ error: errorMessage, loading: false });
     }
   };
 
   const fetchListById = async (id: number) => {
     set({ loading: true, error: null });
     try {
-      const res = await fetch(`http://localhost:${PORT}/lists/${id}`);
-      if (!res.ok) throw new Error(`Failed to fetch list: ${res.status}`);
-      const list = await res.json();
+      const list = await api.lists.getById(id);
       set((state: ListStoreState) => ({
         lists: state.lists.map(l => l.id === id ? list : l),
         loading: false,
         error: null,
       }));
     } catch (err: any) {
-      set({ error: err.message || "Unknown error", loading: false });
+      const errorMessage = err instanceof ApiError 
+        ? `Failed to fetch list: ${err.status}` 
+        : err.message || "Unknown error";
+      set({ error: errorMessage, loading: false });
     }
   };
 
   const createListItem = async (listId: number, data: Partial<BuiltListItem>) => {
     set({ loading: true, error: null });
-
     try {
-      const res = await fetch(`http://localhost:${PORT}/lists/${listId}/items`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+      await api.items.create(listId, {
+        text: data.text || '',
+        checked: data.checked,
+        parent_id: data.parent_id
       });
-
-      if (!res.ok) throw new Error(`Failed to create list item: ${res.status}`);
-
-      await fetchListById(listId);
+      set({ loading: false });
+      // WebSocket will handle the list update
     } catch (err: any) {
-      set({ error: err.message || "Unknown error", loading: false });
+      const errorMessage = err instanceof ApiError 
+        ? `Failed to create list item: ${err.status}` 
+        : err.message || "Unknown error";
+      set({ error: errorMessage, loading: false });
     }
   };
+
   const updateListItem = async (listId: number, itemId: number, data: Partial<BuiltListItem>) => {
     set({ loading: true, error: null });
-
     try {
-      const res = await fetch(`http://localhost:${PORT}/lists/${listId}/items/${itemId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+      await api.items.update(listId, itemId, {
+        text: data.text,
+        checked: data.checked,
+        parent_id: data.parent_id
       });
-
-      if (!res.ok) throw new Error(`Failed to update list item: ${res.status}`);
-
-      await fetchListById(listId);
+      set({ loading: false });
+      // WebSocket will handle the list update
     } catch (err: any) {
-      set({ error: err.message || "Unknown error", loading: false });
+      const errorMessage = err instanceof ApiError 
+        ? `Failed to update list item: ${err.status}` 
+        : err.message || "Unknown error";
+      set({ error: errorMessage, loading: false });
     }
   };
 
   const deleteListItem = async (listId: number, itemId: number) => {
     set({ loading: true, error: null });
-
     try {
-      const res = await fetch(`http://localhost:${PORT}/lists/${listId}/items/${itemId}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) throw new Error(`Failed to delete list item: ${res.status}`);
-
-      await fetchListById(listId);
+      await api.items.delete(listId, itemId);
+      set({ loading: false });
+      // WebSocket will handle the list update
     } catch (err: any) {
-      set({ error: err.message || "Unknown error", loading: false });
+      const errorMessage = err instanceof ApiError 
+        ? `Failed to delete list item: ${err.status}` 
+        : err.message || "Unknown error";
+      set({ error: errorMessage, loading: false });
     }
   };
 
-  const selectList = (id: number) => {
+  const selectList = (id: number | null) => {
     set((state: ListStoreState) => {
+      if (id === null) {
+        return { selectedListId: null };
+      }
+
       const selected = state.lists.find(l => l.id === id);
 
       if (!selected || !selected.items || selected.items.length === 0) {

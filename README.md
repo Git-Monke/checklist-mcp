@@ -20,19 +20,19 @@ Checklist MCP is a full-stack application that combines a beautiful React-based 
 The application consists of three main components:
 
 ```
-┌─────────────────┐    WebSocket     ┌─────────────────┐    HTTP API    ┌─────────────────┐
-│   Web Client    │◄─────────────────│  Database Server │◄───────────────│   MCP Server    │
-│   (React App)   │   Real-time UI   │   (Express.js)  │   REST calls   │  (AI Interface) │
-└─────────────────┘                  └─────────────────┘                └─────────────────┘
+┌─────────────────┐    WebSocket     ┌──────────────────┐    HTTP API    ┌─────────────────┐
+│   Web Client    │◄─────────────────│  Database Server │◄────────────── │   MCP Server    │
+│   (React App)   │   Real-time UI   │   (Express.js)   │   REST calls   │  (AI Interface) │
+└─────────────────┘                  └──────────────────┘                └─────────────────┘
                                               │                                    │
                                               │                                    │
-                                      ┌─────────────────┐                         │
-                                      │   SQLite DB     │                         │
-                                      │  (Data Storage) │                         │
-                                      └─────────────────┘                         │
+                                      ┌─────────────────┐                          │
+                                      │   SQLite DB     │                          │
+                                      │  (Data Storage) │                          │
+                                      └─────────────────┘                          │
                                                                                    │
-                                      ┌─────────────────┐    MCP Protocol         │
-                                      │   AI Assistant  │◄────────────────────────┘
+                                      ┌─────────────────┐    MCP Protocol          │
+                                      │   AI Assistant  │◄─────────────────────────┘
                                       │  (Claude, etc.) │     stdio/tools
                                       └─────────────────┘
 ```
@@ -62,19 +62,14 @@ The application consists of three main components:
 2. **Install dependencies**:
 
    ```bash
-   npm install
+   npm run build
    ```
 
-3. **Start all services**:
-   ```bash
-   npm start
-   ```
-
-This will automatically start:
+Running `npm run start` will automatically start:
 
 - Database server on `http://localhost:1029`
 - Web server on `http://localhost:5173`
-- MCP server ready for AI assistant connections
+- MCP server (of course)
 
 ### Access Points
 

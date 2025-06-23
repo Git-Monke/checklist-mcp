@@ -1,8 +1,75 @@
 # Changelog
 
-## [June 23, 2025] - Component Refactoring & Architecture Improvements
+## [June 23, 2025] - MCP Server Modular Architecture Refactoring
 
 ### Enhanced
+
+- **Major MCP Server Architecture Overhaul**
+
+  - **Modular Tool System**: Extracted all 9 tools from monolithic server into individual modules using factory pattern
+    - **Individual Tool Files**: Each tool now has its own file in `src/tools/` directory
+    - **Factory Pattern Implementation**: Tools use `createXxxTool(dependencies)` functions for proper dependency injection
+    - **Consistent Structure**: All tools return `{ name, definition, handler }` objects for uniform registration
+    - **Independent Testing**: Each tool can be tested in isolation with mocked dependencies
+  - **Dependency Injection Architecture**: Tools receive only the functions they need (dbRequest, formatItems, flattenItems)
+  - **Utility Function Extraction**: Moved shared functions to centralized tools module
+    - **`formatItems`**: Hierarchical list formatting utility extracted from get_list tool
+    - **`flattenItems`**: Item search flattening utility extracted from find_list_item tool
+  - **Configuration Module**: Centralized all environment variables and constants in `src/config.js`
+    - Environment variables (DB_SERVER_URL, WEB_SERVER_URL)
+    - MCP server configuration object
+    - Database request defaults and HTTP status codes
+    - Format constants and validation limits
+  - **Dependency Management Module**: Extracted auto-startup functionality into `src/dependency-manager.js`
+    - Smart service detection and automatic startup
+    - Process management and graceful cleanup
+    - Health monitoring and error handling
+  - **Significant Code Reduction**: Main server file reduced from ~918 lines to ~300 lines (68% reduction)
+  - **ES Module Architecture**: All modules use proper `export function` syntax for better tree-shaking
+
+- **Tool Modularization Completed**
+  - **`get_all_lists`**: Simple list retrieval with error handling
+  - **`get_list`**: Detailed list with hierarchical item formatting using formatItems utility
+  - **`create_list`**: List creation with validation and error responses
+  - **`add_list_item`**: Single item addition with nesting support and parent validation
+  - **`bulk_add_list_items`**: Complex bulk operations with error aggregation and rollback handling
+  - **`find_list_item`**: Text search using flattenItems utility with regex matching
+  - **`update_list_item`**: Item modification with text and completion status updates
+  - **`delete_list_item`**: Item deletion with proper cascade handling
+
+### Added
+
+- **Comprehensive Testing Protocol**: Live functionality testing during refactoring
+  - Created "Example list 🎉" for real MCP environment validation
+  - Tested all tools with emojis, completion status changes, and bulk operations
+  - Verified import/export syntax and tool registration throughout migration
+  - Confirmed WebSocket integration and real-time updates maintained
+- **Clean Separation of Concerns**: Each module handles specific functionality
+  - Tools directory for all MCP tool implementations
+  - Configuration management for environment settings
+  - Dependency management for service orchestration
+  - Utility functions for shared business logic
+
+### Technical Debt Resolved
+
+- **Monolithic File Structure**: Broke down 900+ line server file into focused modules
+- **Mixed Responsibilities**: Separated tool logic, configuration, dependencies, and utilities
+- **Import Management**: Clean ES module structure with proper dependency injection
+- **Testing Complexity**: Individual tools can now be unit tested independently
+- **Code Duplication**: Shared utilities extracted and reused across tools
+
+## [June 23, 2025] - Component Refactoring & Auto-Dependency Management
+
+### Enhanced
+
+- **Auto-Dependency Startup for MCP Server**
+
+  - **Smart Dependency Detection**: MCP server now automatically detects if database and web servers are running on startup
+  - **Automatic Service Startup**: If dependencies aren't running, MCP server will automatically start them before initializing itself
+  - **Health Checks**: Performs proper health checks to ensure services are ready before proceeding
+  - **Graceful Cleanup**: Properly manages child processes and cleans up started services on shutdown
+  - **Improved User Experience**: Users can now start just the MCP server and have the entire stack automatically available
+  - **Error Handling**: Robust error handling and logging throughout the dependency startup process
 
 - **Major Component Architecture Refactoring**
   - **Modular Component Extraction**: Broke down monolithic `ListItemsTree` into focused, single-responsibility components

@@ -31,7 +31,7 @@ interface ListStoreState {
   selectedListId: number | null;
   selectList: (id: number | null) => void;
   fetchLists: () => Promise<void>;
-  createList: (name: string) => Promise<void>;
+  createList: (name: string) => Promise<List>;
   updateList: (id: number, data: Partial<Omit<List, 'id' | 'items'>>) => Promise<void>;
   deleteList: (id: number) => Promise<void>;
   createListItem: (listId: number, data: Partial<BuiltListItem>) => Promise<void>;
@@ -102,17 +102,19 @@ export const useListStore = create<ListStoreState>(((set, get) => {
     }
   };
 
-  const createList = async (name: string) => {
+  const createList = async (name: string): Promise<List> => {
     set({ loading: true, error: null });
     try {
-      await api.lists.create(name);
+      const newList = await api.lists.create(name);
       set({ loading: false });
       // WebSocket will handle the lists update
+      return newList;
     } catch (err: any) {
       const errorMessage = err instanceof ApiError 
         ? `Failed to create list: ${err.status}` 
         : err.message || "Unknown error";
       set({ error: errorMessage, loading: false });
+      throw err;
     }
   };
 

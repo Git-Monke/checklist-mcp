@@ -14,12 +14,12 @@ function AppContent() {
   );
 
   return (
-    <div className="flex flex-col gap-8">
-      <header className="flex items-center gap-8">
+    <div className="flex flex-col gap-8 w-full">
+      <header className="flex items-center gap-8 w-full">
         <SidebarTrigger />
         <h1 className="text-xl font-bold">List Manager</h1>
       </header>
-      <main className="flex flex-col gap-4">
+      <main className="flex flex-col gap-4 w-full">
         <h1 className="text-2xl font-bold text-left ml-1.5">
           {selectedList?.name}
         </h1>

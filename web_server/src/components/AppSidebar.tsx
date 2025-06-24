@@ -43,7 +43,8 @@ function AppSidebar() {
 
   const confirmCreateList = async () => {
     if (newListName.trim()) {
-      await createList(newListName.trim());
+      const newList = await createList(newListName.trim());
+      selectList(newList.id);
       setCreateDialogOpen(false);
       setNewListName("");
     }

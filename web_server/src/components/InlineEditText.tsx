@@ -45,7 +45,7 @@ export function InlineEditText({
     />
   ) : (
     <span
-      className={`cursor-pointer text-md hover:underline text-center flex flex-row items-center ${
+      className={`cursor-pointer text-md hover:underline text-left text-wrap flex flex-row items-center ${
         checked ? "line-through" : ""
       }`}
       onClick={(e) => {
